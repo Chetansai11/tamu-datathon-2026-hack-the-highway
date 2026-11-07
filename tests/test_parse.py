@@ -1,9 +1,10 @@
 """Model-free parser guardrails over generated company data and injected outputs."""
 import json
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.parse import EventParser, ExtractionError, normalize_incident, normalize_incidents, parse_json_output, resolve_date
+from src.parse import EventParser, ExtractionError, _gemini_request, discover_gemini_model, normalize_incident, normalize_incidents, parse_json_output, resolve_date
 
 try:
     from tests.fixtures import SyntheticWorld, row
@@ -112,6 +113,78 @@ class ParserGuardrailsTest(unittest.TestCase):
         self.assertEqual(parsed["incidents"][0]["kind"], "noise")
         self.assertEqual(parsed["provenance"]["revision"], "unit-test")
         self.assertIsNone(parser.model)
+
+    def test_gemini_catalog_paginates_and_prefers_stable_supported_flash_lite(self):
+        catalog = [
+            {"models": [{"name": "models/gemini-2.5-flash-lite", "supportedGenerationMethods": ["generateContent"]}, {"name": "models/gemini-9-flash-lite-preview", "supportedGenerationMethods": ["generateContent"]}], "nextPageToken": "page-two"},
+            {"models": [{"name": "models/gemini-3.5-flash-lite", "version": "fixture-version", "supportedGenerationMethods": ["generateContent"]}, {"name": "models/gemini-8-flash-lite", "supportedGenerationMethods": ["embedContent"]}, {"name": "models/gemini-9-pro", "supportedGenerationMethods": ["generateContent"]}]},
+        ]
+        with patch("src.parse.gemini_key_configured", return_value=True), patch("src.parse._gemini_request", side_effect=catalog) as request:
+            selected = discover_gemini_model()
+        self.assertEqual(selected["model"], "gemini-3.5-flash-lite")
+        self.assertEqual(selected["version"], "fixture-version")
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(request.call_args_list[1].kwargs["params"]["pageToken"], "page-two")
+
+    def test_gemini_explicit_model_must_be_catalog_supported(self):
+        catalog = {"models": [{"name": "models/gemini-fixture", "supportedGenerationMethods": ["generateContent"]}]}
+        with patch("src.parse.gemini_key_configured", return_value=True), patch("src.parse._gemini_request", return_value=catalog):
+            self.assertEqual(discover_gemini_model("models/gemini-fixture")["model"], "gemini-fixture")
+            with self.assertRaises(RuntimeError):
+                discover_gemini_model("gemini-does-not-exist")
+
+    def test_gemini_missing_key_stops_before_network_request(self):
+        with patch("src.parse.gemini_key_configured", return_value=False), patch("requests.request") as request:
+            for call in (lambda: discover_gemini_model(), lambda: _gemini_request("GET", "models")):
+                with self.subTest(call=call), self.assertRaisesRegex(RuntimeError, "not configured"):
+                    call()
+            request.assert_not_called()
+
+    def test_gemini_errors_do_not_expose_key_url_headers_or_response_body(self):
+        import requests
+        fake_key = "UNIT-TEST-SECRET-DO-NOT-ECHO"
+        fake_host = "https://unit-test-private-host.invalid/v1beta"
+        cases = [
+            requests.ConnectionError(f"Failed {fake_host} x-goog-api-key={fake_key}"),
+            SimpleNamespace(ok=False, status_code=403, text=f"Rejected key {fake_key}"),
+        ]
+        with patch("src.parse.gemini_key_configured", return_value=True), patch("toolkit.prize_apis.need", return_value=[fake_key]), patch("toolkit.prize_apis.GEMINI_URL", return_value=fake_host):
+            for result in cases:
+                with self.subTest(result=type(result).__name__):
+                    request_kwargs = {"side_effect": result} if isinstance(result, Exception) else {"return_value": result}
+                    with patch("requests.request", **request_kwargs) as request, self.assertRaises(RuntimeError) as caught:
+                        _gemini_request("POST", "models/unit-test:generateContent", body={"test": True})
+                    message = str(caught.exception)
+                    self.assertNotIn(fake_key, message)
+                    self.assertNotIn(fake_host, message)
+                    self.assertNotIn("x-goog-api-key", message)
+                    self.assertNotIn(fake_key, request.call_args.args[1])
+                    self.assertEqual(request.call_args.kwargs["headers"]["x-goog-api-key"], fake_key)
+
+    def test_gemini_generation_preserves_model_version_and_token_provenance(self):
+        parser = EventParser(self.graph, provider="gemini", max_new_tokens=2048)
+        raw = json.dumps({"incidents": [{"kind": "noise", "confirmed": False}]})
+        payload = {"modelVersion": "gemini-fixture-resolved-2027", "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": "Internal thought must be excluded", "thought": True}, {"text": raw}]}}], "usageMetadata": {"promptTokenCount": 100, "candidatesTokenCount": 24, "totalTokenCount": 144, "thoughtsTokenCount": 20}}
+        with patch("src.parse.discover_gemini_model", return_value={"model": "gemini-3.5-flash-lite", "version": "catalog-version"}) as catalog, patch("src.parse._gemini_request", return_value=payload) as request:
+            parsed = parser.parse({"event_id": "SYNTHETIC", "text": "Brochure request."})
+        catalog.assert_called_once()
+        provenance = parsed["provenance"]
+        self.assertEqual(provenance["revision"], "gemini-fixture-resolved-2027")
+        self.assertEqual(provenance["model"], "gemini-3.5-flash-lite")
+        self.assertEqual([provenance[k] for k in ("input_tokens", "output_tokens", "total_tokens", "thinking_tokens")], [100, 24, 144, 20])
+        self.assertEqual(provenance["raw_output"], raw)
+        self.assertEqual(provenance["finish_reason"], "STOP")
+        self.assertEqual(request.call_args.kwargs["body"]["generationConfig"]["maxOutputTokens"], 2048)
+        self.assertEqual(parsed["incidents"][0]["kind"], "noise")
+
+    def test_gemini_incomplete_or_blocked_generation_cannot_be_accepted(self):
+        raw = json.dumps({"incidents": [{"kind": "noise", "confirmed": False}]})
+        payloads = [{"candidates": []}, {"candidates": [{"finishReason": "MAX_TOKENS", "content": {"parts": [{"text": raw}]}}]}, {"candidates": [{"finishReason": "SAFETY", "content": {"parts": [{"text": raw}]}}]}]
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                parser = EventParser(self.graph, provider="gemini")
+                with patch("src.parse.discover_gemini_model", return_value={"model": "gemini-3.5-flash-lite"}), patch("src.parse._gemini_request", return_value=payload), self.assertRaises(RuntimeError):
+                    parser.parse({"event_id": "SYNTHETIC", "text": "Brochure request."})
 
 
 if __name__ == "__main__":

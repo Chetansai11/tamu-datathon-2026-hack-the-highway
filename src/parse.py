@@ -1,4 +1,4 @@
-"""Small local LLM extracts source spans; deterministic code resolves company IDs.
+"""A small LLM extracts source spans; deterministic code resolves company IDs.
 
 No event-ID lookup or precomputed answer map is used. Malformed, contradictory,
 ambiguous, and unconfirmed extractions become escalation-only incidents.
@@ -296,22 +296,111 @@ def parse_json_output(text: str) -> dict | list:
     raise ExtractionError("Model returned no valid incidents JSON")
 
 
+def gemini_key_configured() -> bool:
+    """Check presence through the shared helper; never expose credential values."""
+    from toolkit import prize_apis
+    return bool(prize_apis.env("GEMINI_API_KEY"))
+
+
+def _gemini_request(method: str, resource: str, *, body: dict | None = None,
+                    params: dict | None = None) -> dict:
+    """Use shared configuration and keep API credentials out of URLs and errors."""
+    import requests
+    from toolkit import prize_apis
+    if not gemini_key_configured():
+        raise RuntimeError("GEMINI_API_KEY is not configured through toolkit.prize_apis")
+    headers = {"x-goog-api-key": prize_apis.need("GEMINI_API_KEY")[0]}
+    url = f"{prize_apis.GEMINI_URL().rstrip('/')}/{resource.lstrip('/')}"
+    try:
+        response = requests.request(method, url, headers=headers, json=body, params=params,
+                                    timeout=prize_apis.TIMEOUT)
+    except requests.RequestException as exc:
+        # Do not include a request object, headers, URL overrides, or response body.
+        raise RuntimeError(f"Gemini {method} request failed: {type(exc).__name__}") from None
+    if not response.ok:
+        raise RuntimeError(f"Gemini {method} request failed with HTTP {response.status_code}")
+    try:
+        payload = response.json()
+    except ValueError:
+        raise RuntimeError("Gemini returned invalid JSON") from None
+    if not isinstance(payload, dict):
+        raise RuntimeError("Gemini returned an unexpected response shape")
+    return payload
+
+
+def discover_gemini_model(requested: str | None = None) -> dict:
+    """Select an actually listed, generateContent-capable Flash Lite model.
+
+    Explicit model names are checked against the same live catalog. The default
+    favors stable numbered Flash Lite releases and never invents a model name.
+    """
+    if not gemini_key_configured():
+        raise RuntimeError("GEMINI_API_KEY is not configured through toolkit.prize_apis")
+    models = []
+    page_token = None
+    for _ in range(20):
+        params = {"pageSize": 1000}
+        if page_token:
+            params["pageToken"] = page_token
+        payload = _gemini_request("GET", "models", params=params)
+        models.extend(model for model in payload.get("models", [])
+                      if isinstance(model, dict) and "generateContent" in model.get("supportedGenerationMethods", []))
+        page_token = payload.get("nextPageToken")
+        if not page_token:
+            break
+    else:
+        raise RuntimeError("Gemini model listing exceeded the pagination limit")
+    if requested:
+        requested = requested.removeprefix("models/")
+        choices = [model for model in models if model.get("name", "").removeprefix("models/") == requested]
+        if not choices:
+            raise RuntimeError("The requested Gemini model is not listed with generateContent support")
+    else:
+        choices = [model for model in models if "flash-lite" in model.get("name", "").lower()
+                   and model.get("name", "").startswith("models/gemini-")]
+        if not choices:
+            raise RuntimeError("No Flash Lite model with generateContent support is visible to this API key")
+        stable = [model for model in choices
+                  if not re.search(r"(?:preview|experimental|\bexp\b|latest)", model["name"], re.I)]
+        choices = stable or choices
+
+    def rank(model: dict) -> tuple:
+        short_name = model["name"].removeprefix("models/")
+        version = re.match(r"gemini-(\d+)(?:\.(\d+))?", short_name)
+        return (int(version[1]) if version else 0, int(version[2] or 0) if version else 0, short_name)
+
+    selected = max(choices, key=rank)
+    return {"model": selected["name"].removeprefix("models/"),
+            "version": selected.get("version"), "display_name": selected.get("displayName"),
+            "input_token_limit": selected.get("inputTokenLimit"),
+            "output_token_limit": selected.get("outputTokenLimit"),
+            "verified_by": "Gemini GET /models with generateContent support"}
+
+
 class EventParser:
-    """Lazy-loaded, deterministic local extraction model; no external API required."""
+    """Local Qwen or configured Gemini extraction with a shared validation boundary."""
 
     def __init__(self, graph: KnowledgeGraph, model_path: str | Path = DEFAULT_MODEL_PATH,
-                 *, device: str = "auto", max_new_tokens: int = 768, revision: str | None = None):
+                 *, device: str = "auto", max_new_tokens: int | None = None, revision: str | None = None,
+                 provider: str = "local", model_name: str | None = None):
+        if provider not in {"local", "gemini"}:
+            raise ValueError("provider must be 'local' or 'gemini'")
         self.graph = graph
+        self.provider = provider
+        self.model_name = model_name or (MODEL_ID if provider == "local" else None)
+        self.model_catalog_entry = None
         self.model_path = Path(model_path)
         self.requested_device = device
         self.device = "unloaded"
-        self.max_new_tokens = max_new_tokens
-        self.revision = revision or "local-snapshot (upstream commit not supplied)"
+        self.max_new_tokens = max_new_tokens if max_new_tokens is not None else (2048 if provider == "gemini" else 768)
+        if isinstance(self.max_new_tokens, bool) or not isinstance(self.max_new_tokens, int) or self.max_new_tokens < 1:
+            raise ValueError("max_new_tokens must be a positive integer")
+        self.revision = revision or ("local-snapshot (upstream commit not supplied)" if provider == "local" else "not yet verified")
         self.model = None
         self.tokenizer = None
         self.model_load_seconds = 0.0
         self.config_sha256 = (hashlib.sha256((self.model_path / "config.json").read_bytes()).hexdigest()
-                              if (self.model_path / "config.json").exists() else None)
+                              if provider == "local" and (self.model_path / "config.json").exists() else None)
 
     @staticmethod
     def resolve_date(text: str) -> str:
@@ -342,6 +431,8 @@ class EventParser:
         self.model_load_seconds = time.perf_counter() - started
 
     def _generate(self, event_text: str) -> tuple[str, dict]:
+        if self.provider == "gemini":
+            return self._generate_gemini(event_text)
         import torch
         self._load()
         messages = [{"role": "system", "content": SYSTEM_PROMPT},
@@ -355,6 +446,52 @@ class EventParser:
         completion = tokens[0, inputs["input_ids"].shape[1]:]
         output = self.tokenizer.decode(completion, skip_special_tokens=True)
         return output, {"input_tokens": inputs["input_ids"].shape[1], "output_tokens": len(completion),
+                        "generation_seconds": round(time.perf_counter() - started, 4)}
+
+    def _generate_gemini(self, event_text: str) -> tuple[str, dict]:
+        if self.model_catalog_entry is None:
+            started = time.perf_counter()
+            self.model_catalog_entry = discover_gemini_model(self.model_name)
+            self.model_name = self.model_catalog_entry["model"]
+            self.revision = self.model_catalog_entry.get("version") or "not reported by models.list"
+            self.model_load_seconds = time.perf_counter() - started
+        self.device = "Gemini API"
+        generation_config = {"temperature": 0, "maxOutputTokens": self.max_new_tokens,
+                             "responseMimeType": "application/json"}
+        # Output limits include reasoning tokens. Use documented low-thinking
+        # settings only for the model families whose configuration is known.
+        if "flash-lite" in self.model_name:
+            if re.match(r"gemini-3(?:\.|-)", self.model_name):
+                generation_config["thinkingConfig"] = {"thinkingLevel": "MINIMAL"}
+            elif self.model_name.startswith("gemini-2.5-"):
+                generation_config["thinkingConfig"] = {"thinkingBudget": 0}
+        body = {"systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                "contents": [{"role": "user", "parts": [{"text": "Extract all incidents in this message:\n" + event_text}]}],
+                "generationConfig": generation_config}
+        started = time.perf_counter()
+        payload = _gemini_request("POST", f"models/{self.model_name}:generateContent", body=body)
+        candidates = payload.get("candidates", [])
+        if not candidates:
+            raise RuntimeError("Gemini returned no extraction candidate")
+        candidate = candidates[0]
+        finish_reason = candidate.get("finishReason")
+        if finish_reason != "STOP":
+            # A truncated completion may contain syntactically valid JSON that
+            # omits a second incident. Never execute any part of that result.
+            safe_reason = finish_reason if isinstance(finish_reason, str) and re.fullmatch(r"[A-Z_]{1,40}", finish_reason) else "UNKNOWN"
+            raise RuntimeError(f"Gemini extraction was not complete (finish reason: {safe_reason})")
+        parts = candidate.get("content", {}).get("parts", [])
+        output = "".join(part.get("text", "") for part in parts if not part.get("thought"))
+        if not output.strip():
+            raise RuntimeError("Gemini returned no extraction text")
+        self.revision = payload.get("modelVersion") or self.revision
+        usage = payload.get("usageMetadata", {})
+        return output, {"input_tokens": usage.get("promptTokenCount"),
+                        "output_tokens": usage.get("candidatesTokenCount"),
+                        "total_tokens": usage.get("totalTokenCount"),
+                        "thinking_tokens": usage.get("thoughtsTokenCount", 0),
+                        "finish_reason": candidate.get("finishReason"),
+                        "generation_config": generation_config,
                         "generation_seconds": round(time.perf_counter() - started, 4)}
 
     def parse(self, event: dict) -> dict:
@@ -374,12 +511,14 @@ class EventParser:
         warnings.extend(incident["reason"] for incident in incidents
                         if incident.get("reason", "").startswith("Extraction validation failed"))
         return {"event_id": event.get("event_id"), "incidents": incidents,
-                "provenance": {"model": MODEL_ID, "revision": self.revision,
+                "provenance": {"model": self.model_name, "provider": self.provider, "revision": self.revision,
+                               "model_catalog_entry": self.model_catalog_entry,
                                "config_sha256": self.config_sha256, "device": self.device,
                                "model_load_seconds": round(self.model_load_seconds, 4),
                                "latency_seconds": round(time.perf_counter() - started, 4),
                                "raw_output": output, "warnings": warnings,
-                               "decoder": "greedy, do_sample=False", **metrics}}
+                               "decoder": ("greedy, do_sample=False" if self.provider == "local"
+                                           else "temperature=0, responseMimeType=application/json"), **metrics}}
 
 
 def main() -> None:
@@ -391,9 +530,12 @@ def main() -> None:
     parser.add_argument("--out", default="outputs/extractions.json")
     parser.add_argument("--device", default="auto")
     parser.add_argument("--revision")
+    parser.add_argument("--provider", choices=("local", "gemini"), default="local")
+    parser.add_argument("--model-name", help="Optional Gemini model; verified against the live model catalog")
     args = parser.parse_args()
     graph = KnowledgeGraph(args.data)
-    engine = EventParser(graph, args.model_path, device=args.device, revision=args.revision)
+    engine = EventParser(graph, args.model_path, device=args.device, revision=args.revision,
+                         provider=args.provider, model_name=args.model_name)
     events = json.loads(Path(args.events or Path(args.data) / "events.json").read_text(encoding="utf-8"))
     if args.event_id:
         events = [event for event in events if event["event_id"] == args.event_id]
