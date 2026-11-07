@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "challenge_number": 6,
+  "challenge_name": "Hitachi: Hack the Highway",
+  "official_challenge_url": "https://tamudatathon.com/challenges/6",
+  "verified_on": "2026-11-07",
+  "reserved_local_port": 8606,
+  "setup_document": "docs/SETUP.md",
+  "starter_kind": "official_zip",
+  "starter_status": "verified_local_package",
+  "official_download_url": "https://tamudatathon.com/downloads/hack_the_highway_student_package.zip",
+  "local_archive": "data/package.zip",
+  "archive_sha256": "6573a2c19093a0957cf20e85febb87a446048de2bf3a40972b1202ad2a1c71df",
+  "extracted_package": "data/package/hack_the_highway_package",
+  "data_path": "data/package/hack_the_highway_package/data",
+  "versioned_starter_files": [
+    {
+      "path": "starter/enterprise.py",
+      "package_path": "hack_the_highway_package/enterprise.py",
+      "sha256": "cc5a8ccc820c71f8fe5ca4e1d8d6de46270e6a904710e4efa9263c26452f70e9",
+      "modified_from_package": false
+    },
+    {
+      "path": "starter/enterprise_server.py",
+      "package_path": "hack_the_highway_package/enterprise_server.py",
+      "sha256": "f1cb4f6686a445f2e5c30f11bbb71ef6a57ce333e7cea25aaa5dbdf1a7757f1d",
+      "modified_from_package": false
+    },
+    {
+      "path": "starter/Usecase.md",
+      "package_path": "hack_the_highway_package/Usecase.md",
+      "sha256": "97ccd6be2444933aec1ae34a00a72ea588cbd633f4eba134493572942ff1915b",
+      "modified_from_package": false
+    }
+  ],
+  "verification": {
+    "archive_crc": "passed",
+    "archive_file_count": 22,
+    "extracted_matches_archive": true,
+    "python_parse": "passed",
+    "enterprise_load": "passed",
+    "csv_tables": 16,
+    "events": 15,
+    "unique_event_ids": 15,
+    "tools": 10,
+    "in_memory_read_tool": "mes.get_schedule passed",
+    "http_server": "not_run",
+    "solution": "not_implemented_or_verified",
+    "llm_calls": "not_run"
+  },
+  "note": "Hash describes the existing local archive; the archive was not downloaded again during this verification. Data and archive are ignored by Git."
+}
