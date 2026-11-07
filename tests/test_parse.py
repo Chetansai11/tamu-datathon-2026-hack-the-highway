@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 
 class ParserGuardrailsTest(unittest.TestCase):
     def setUp(self):
-        self.world = SyntheticWorld(aliases=[row("aliases", "the Alpha line", "plant", "P_A"), row("aliases", "widgets", "part", "PART-X"), row("aliases", "Acme", "supplier", "SUP-1")])
+        self.world = SyntheticWorld(aliases=[row("aliases", "the Alpha line", "plant", "P_A"), row("aliases", "the cobalt factory", "plant", "P_A"), row("aliases", "widgets", "part", "PART-X"), row("aliases", "Acme", "supplier", "SUP-1")])
         self.addCleanup(self.world.close)
         self.graph = self.world.graph
 
@@ -39,6 +39,13 @@ class ParserGuardrailsTest(unittest.TestCase):
         incident = normalize_incident({"kind": "plant_outage", "confirmed": True, "plant": "the Alpha line", "start": "next Tuesday", "end": "next Thursday"}, text, self.graph)
         self.assertEqual((incident["plant_id"], incident["start_date"], incident["end_date"]), ("P_A", "2027-03-16", "2027-03-18"))
 
+    def test_alias_leading_article_is_optional_without_inventing_entity(self):
+        text = "Cobalt factory is down from next Tuesday through next Thursday."
+        for extracted in ("Cobalt factory", "the cobalt factory"):
+            with self.subTest(extracted=extracted):
+                incident = normalize_incident({"kind": "plant_outage", "confirmed": True, "plant": extracted, "start": "next Tuesday", "end": "next Thursday"}, text, self.graph)
+                self.assertEqual(incident["plant_id"], "P_A")
+
     def test_supplier_join_uses_supplier_part_plant_and_original_eta(self):
         text = "Acme's widgets for the Alpha line were due Tuesday Mar 9 and arrive Thursday Mar 11."
         incident = normalize_incident({"kind": "supplier_delay", "confirmed": True, "supplier": "Acme", "part": "widgets", "plant": "the Alpha line", "original_eta": "Tuesday Mar 9", "new_eta": "Thursday Mar 11"}, text, self.graph)
@@ -48,6 +55,27 @@ class ParserGuardrailsTest(unittest.TestCase):
         text = "Shipment SH-X is delayed until Thursday Mar 11."
         incident = normalize_incident({"kind": "supplier_delay", "confirmed": True, "shipment": "SH-X", "new_eta": "Thursday Mar 11"}, text, self.graph)
         self.assertEqual((incident["plant_id"], incident["part_id"], incident["original_eta"]), ("P_A", "PART-X", "2027-03-09"))
+
+    def test_explicit_shipment_supplier_can_be_grounded_in_sender_header(self):
+        evidence = "Shipment SH-X is delayed until Thursday Mar 11."
+        text = "Subject: Shipment update\nFrom: dispatch@acme.test\n\n" + evidence
+        incident = normalize_incident({"kind": "supplier_delay", "confirmed": True, "supplier": "Acme", "shipment": "SH-X", "new_eta": "Thursday Mar 11", "evidence": evidence}, text, self.graph)
+        self.assertEqual((incident["supplier_id"], incident["shipment_id"]), ("SUP-1", "SH-X"))
+        self.assertEqual(incident["evidence"], evidence)
+
+    def test_sender_header_supplier_must_match_explicit_shipment(self):
+        world = SyntheticWorld(suppliers=[row("suppliers", "SUP-1", "Acme", "City A"), row("suppliers", "SUP-2", "Beryl", "City B")])
+        self.addCleanup(world.close)
+        evidence = "Shipment SH-X is delayed until Thursday Mar 11."
+        text = "From: dispatch@beryl.test\n\n" + evidence
+        with self.assertRaises(ExtractionError):
+            normalize_incident({"kind": "supplier_delay", "confirmed": True, "supplier": "Beryl", "shipment": "SH-X", "new_eta": "Thursday Mar 11", "evidence": evidence}, text, world.graph)
+
+    def test_sender_header_context_requires_explicit_shipment_identity(self):
+        evidence = "Widgets for the Alpha line were due Tuesday Mar 9 and arrive Thursday Mar 11."
+        text = "From: dispatch@acme.test\n\n" + evidence
+        with self.assertRaises(ExtractionError):
+            normalize_incident({"kind": "supplier_delay", "confirmed": True, "supplier": "Acme", "part": "widgets", "plant": "the Alpha line", "original_eta": "Tuesday Mar 9", "new_eta": "Thursday Mar 11", "evidence": evidence}, text, self.graph)
 
     def test_quality_join_uses_lot_build_window(self):
         text = "Quality alert: Acme widgets for the Alpha line are faulty; vehicles built last Thursday through last Friday are suspect."
@@ -117,7 +145,7 @@ class ParserGuardrailsTest(unittest.TestCase):
     def test_gemini_catalog_paginates_and_prefers_stable_supported_flash_lite(self):
         catalog = [
             {"models": [{"name": "models/gemini-2.5-flash-lite", "supportedGenerationMethods": ["generateContent"]}, {"name": "models/gemini-9-flash-lite-preview", "supportedGenerationMethods": ["generateContent"]}], "nextPageToken": "page-two"},
-            {"models": [{"name": "models/gemini-3.5-flash-lite", "version": "fixture-version", "supportedGenerationMethods": ["generateContent"]}, {"name": "models/gemini-8-flash-lite", "supportedGenerationMethods": ["embedContent"]}, {"name": "models/gemini-9-pro", "supportedGenerationMethods": ["generateContent"]}]},
+            {"models": [{"name": "models/gemini-3.5-flash-lite", "version": "fixture-version", "supportedGenerationMethods": ["generateContent"]}, {"name": "models/gemini-3.8-flash-lite-tts", "supportedGenerationMethods": ["generateContent"]}, {"name": "models/gemini-3.9-flash-lite-image", "supportedGenerationMethods": ["generateContent"]}, {"name": "models/gemini-8-flash-lite", "supportedGenerationMethods": ["embedContent"]}, {"name": "models/gemini-9-pro", "supportedGenerationMethods": ["generateContent"]}]},
         ]
         with patch("src.parse.gemini_key_configured", return_value=True), patch("src.parse._gemini_request", side_effect=catalog) as request:
             selected = discover_gemini_model()
@@ -132,6 +160,14 @@ class ParserGuardrailsTest(unittest.TestCase):
             self.assertEqual(discover_gemini_model("models/gemini-fixture")["model"], "gemini-fixture")
             with self.assertRaises(RuntimeError):
                 discover_gemini_model("gemini-does-not-exist")
+
+    def test_gemini_explicit_nontext_generation_model_is_rejected(self):
+        names = ("gemini-3.8-flash-lite-tts", "gemini-3.9-flash-lite-image")
+        catalog = {"models": [{"name": "models/" + name, "supportedGenerationMethods": ["generateContent"]} for name in names]}
+        with patch("src.parse.gemini_key_configured", return_value=True), patch("src.parse._gemini_request", return_value=catalog):
+            for name in names:
+                with self.subTest(name=name), self.assertRaises(RuntimeError):
+                    discover_gemini_model(name)
 
     def test_gemini_missing_key_stops_before_network_request(self):
         with patch("src.parse.gemini_key_configured", return_value=False), patch("requests.request") as request:
