@@ -160,6 +160,8 @@ class EnterpriseClient:
                 raise cls("Invalid action response")
             if "error" in result or result.get("ok") is False:
                 raise ToolCallError(str(result.get("error", "Action was rejected")))
+            if tool not in READ_TOOLS and result.get('ok') is not True:
+                raise UnknownOutcomeError('Action response did not explicitly confirm success')
             entry.update(ok=True, outcome="confirmed", result=result)
             return result
         except Exception as exc:
