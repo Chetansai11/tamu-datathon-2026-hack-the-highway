@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1780" height="900" viewBox="0 0 1780 900" role="img" aria-label="Wacky Wheels ontology: eleven entity types and all eighteen class relationships">
+<rect width="1780" height="900" rx="20" fill="#0e192b"/>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="#7d91ac"/></marker></defs>
+<text x="50" y="827" fill="#eef4fc" font-size="28" font-family="sans-serif" font-weight="700">Wacky Wheels company ontology</text>
+<text x="50" y="858" fill="#9fb3ce" font-size="18" font-family="sans-serif">16 CSV tables · 11 entity types · 16,979 nodes · 28,190 instance edges</text>
+<text x="50" y="882" fill="#768eae" font-size="14" font-family="sans-serif">All class relationships shown. Lot USED_IN requires plant + build window + BOM. Live schedules and loaner pools remain server-owned.</text>
+<path data-source="Supplier" data-target="Shipment" data-relation="SHIPS" d="M235 165 L375 125" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="299" y="130" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">SHIPS</text>
+<path data-source="Supplier" data-target="Part" data-relation="SUPPLIES" d="M150 138 L150 65 L740 65 L740 88" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="430" y="53" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">SUPPLIES</text>
+<path data-source="Supplier" data-target="Lot" data-relation="PRODUCES" d="M235 180 C310 180 300 460 375 460" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="281" y="337" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">PRODUCES</text>
+<path data-source="Shipment" data-target="Part" data-relation="CONTAINS" d="M545 120 L655 120" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="600" y="102" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">CONTAINS</text>
+<path data-source="Shipment" data-target="Plant" data-relation="RECEIVED_AT" d="M515 152 C580 230 615 510 690 658" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="580" y="393" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">RECEIVED_AT</text>
+<path data-source="Part" data-target="Model" data-relation="USED_BY" d="M825 120 L945 120" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="884" y="102" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">USED_BY</text>
+<path data-source="Lot" data-target="Part" data-relation="OF_PART" d="M510 428 C600 350 670 230 720 152" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="649" y="276" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">OF_PART</text>
+<path data-source="Lot" data-target="Plant" data-relation="AT_PLANT" d="M460 492 L460 690 L655 690" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="559" y="674" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">AT_PLANT</text>
+<path data-source="Lot" data-target="ProductionOrder" data-relation="USED_IN" d="M545 460 L945 460" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="747" y="444" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">USED_IN</text>
+<path data-source="Plant" data-target="Model" data-relation="BUILDS" d="M825 680 L890 680 L890 180 L980 152" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="883" y="365" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">BUILDS</text>
+<path data-source="Plant" data-target="ProductionOrder" data-relation="SCHEDULES" d="M825 670 C900 640 955 555 1000 492" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="944" y="581" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">SCHEDULES</text>
+<path data-source="Model" data-target="ProductionOrder" data-relation="HAS_ORDER" d="M1030 152 L1030 428" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1087" y="291" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">HAS_ORDER</text>
+<path data-source="ProductionOrder" data-target="CustomerOrder" data-relation="FULFILLS" d="M1115 445 C1170 410 1190 350 1235 330" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1191" y="373" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">FULFILLS</text>
+<path data-source="ProductionOrder" data-target="Vehicle" data-relation="BUILT" d="M1115 478 C1170 515 1190 590 1235 610" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1190" y="555" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">BUILT</text>
+<path data-source="CustomerOrder" data-target="Dealer" data-relation="AT_DEALER" d="M1405 330 L1515 330" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1459" y="312" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">AT_DEALER</text>
+<path data-source="CustomerOrder" data-target="Customer" data-relation="FOR_CUSTOMER" d="M1405 350 C1465 400 1465 550 1515 590" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1500" y="468" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">FOR_CUSTOMER</text>
+<path data-source="Vehicle" data-target="Customer" data-relation="OWNED_BY" d="M1405 610 L1515 610" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1460" y="592" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">OWNED_BY</text>
+<path data-source="Vehicle" data-target="Dealer" data-relation="AT_DEALER" d="M1320 642 L1320 750 L1720 750 L1720 330 L1685 330" fill="none" stroke="#617c9e" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1524" y="774" text-anchor="middle" fill="#a5b9d3" font-size="13" font-family="sans-serif" paint-order="stroke" stroke="#0e192b" stroke-width="7" stroke-linejoin="round">AT_DEALER</text>
+<rect x="65" y="138" width="170" height="64" rx="10" fill="#172940" stroke="#65bfff" stroke-width="1.5"/>
+<text x="150" y="167" text-anchor="middle" fill="#65bfff" font-size="18" font-family="sans-serif" font-weight="700">Supplier</text>
+<text x="150" y="190" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">18 records</text>
+<rect x="375" y="88" width="170" height="64" rx="10" fill="#172940" stroke="#65bfff" stroke-width="1.5"/>
+<text x="460" y="117" text-anchor="middle" fill="#65bfff" font-size="18" font-family="sans-serif" font-weight="700">Shipment</text>
+<text x="460" y="140" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">364 records</text>
+<rect x="655" y="88" width="170" height="64" rx="10" fill="#172940" stroke="#aa97ff" stroke-width="1.5"/>
+<text x="740" y="117" text-anchor="middle" fill="#aa97ff" font-size="18" font-family="sans-serif" font-weight="700">Part</text>
+<text x="740" y="140" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">20 records</text>
+<rect x="945" y="88" width="170" height="64" rx="10" fill="#172940" stroke="#9aaec7" stroke-width="1.5"/>
+<text x="1030" y="117" text-anchor="middle" fill="#9aaec7" font-size="18" font-family="sans-serif" font-weight="700">Model</text>
+<text x="1030" y="140" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">6 records</text>
+<rect x="375" y="428" width="170" height="64" rx="10" fill="#172940" stroke="#aa97ff" stroke-width="1.5"/>
+<text x="460" y="457" text-anchor="middle" fill="#aa97ff" font-size="18" font-family="sans-serif" font-weight="700">Lot</text>
+<text x="460" y="480" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">364 records</text>
+<rect x="655" y="658" width="170" height="64" rx="10" fill="#172940" stroke="#65bfff" stroke-width="1.5"/>
+<text x="740" y="687" text-anchor="middle" fill="#65bfff" font-size="18" font-family="sans-serif" font-weight="700">Plant</text>
+<text x="740" y="710" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">6 records</text>
+<rect x="945" y="428" width="170" height="64" rx="10" fill="#172940" stroke="#ffb064" stroke-width="1.5"/>
+<text x="1030" y="457" text-anchor="middle" fill="#ffb064" font-size="18" font-family="sans-serif" font-weight="700">ProductionOrder</text>
+<text x="1030" y="480" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">540 records</text>
+<rect x="1235" y="298" width="170" height="64" rx="10" fill="#172940" stroke="#50d6b4" stroke-width="1.5"/>
+<text x="1320" y="327" text-anchor="middle" fill="#50d6b4" font-size="18" font-family="sans-serif" font-weight="700">CustomerOrder</text>
+<text x="1320" y="350" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">3,263 records</text>
+<rect x="1235" y="578" width="170" height="64" rx="10" fill="#172940" stroke="#ffb064" stroke-width="1.5"/>
+<text x="1320" y="607" text-anchor="middle" fill="#ffb064" font-size="18" font-family="sans-serif" font-weight="700">Vehicle</text>
+<text x="1320" y="630" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">5,348 records</text>
+<rect x="1515" y="298" width="170" height="64" rx="10" fill="#172940" stroke="#50d6b4" stroke-width="1.5"/>
+<text x="1600" y="327" text-anchor="middle" fill="#50d6b4" font-size="18" font-family="sans-serif" font-weight="700">Dealer</text>
+<text x="1600" y="350" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">50 records</text>
+<rect x="1515" y="578" width="170" height="64" rx="10" fill="#172940" stroke="#a5da79" stroke-width="1.5"/>
+<text x="1600" y="607" text-anchor="middle" fill="#a5da79" font-size="18" font-family="sans-serif" font-weight="700">Customer</text>
+<text x="1600" y="630" text-anchor="middle" fill="#bbcce0" font-size="14" font-family="sans-serif">7,000 records</text>
+</svg>

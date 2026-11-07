@@ -17,8 +17,6 @@ Measured on 2026-11-07 by executing all public events through `PolicyEngine` aga
 
 Auditor fault-injection check: 6/6 deliberate corruptions were detected, compared with no errors on the unmodified candidate. The mutations were a duplicate loaner, a missing loaner, escalation of noise, a fabricated graph node, a failed-call flag, and a weekend move date. These checks establish that the audit rejects those failures; they are not independent challenge reproductions.
 
-## Hand review of all 15 public events
-
 ## Final live-model and HTTP verification
 
 The actual `gemini-3.5-flash-lite` run produced all 15 event responses using 12,986 input tokens and 1,306 output tokens (13.699 seconds summed extraction latency). Its initial deterministic normalization passed 12/15 events. Generic fixes for omitted leading articles and shipment sender-header context brought revalidation of the unchanged recorded model responses to 15/15; no additional model calls were needed. Original responses remain in `runs/extraction/raw-parsed.json`; the final parse retains the original warnings, raw output and source hash.
@@ -27,7 +25,7 @@ The final interpreted incidents were compared with every hand-reviewed row below
 
 The dry-run official HTTP server completed 1,120 calls in 16.760 seconds with zero failures, and the independent audit passed 15/15 events. A second clean server run in `runs/submission` completed the same 1,120 calls in 9.086 seconds with zero failures and again passed 15/15, versus the 3/15 do-nothing baseline. It contains 766 operational writes, 352 reads and two escalations. This second run reuses the same actual LLM output and is a fresh execution check, not an independent LLM reproduction. Both action logs are byte-for-byte identical.
 
-The full synthetic/guardrail suite passes 76/76 tests. The UI passed nine AppTest scenarios; native browser verification found and fixed a stripped SVG graph, then confirmed a loaded graph image and actual action/provenance views. Screenshots document the dry-run evidence; the final run has identical actions.
+The full synthetic/guardrail suite passes 80/80 tests, including four release checks that reject modified, stale or incomplete cached extraction. All 15 existing submission caches also pass the added raw-output revalidation without changing any incident. The UI passed nine AppTest scenarios; native browser verification found and fixed a stripped SVG graph, then confirmed a loaded graph image and actual action/provenance views. Screenshots document the dry-run evidence; the final run has identical actions.
 
 Model citation: [Google Gemini 3.5 Flash-Lite model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite) and [model card](https://deepmind.google/models/model-cards/gemini-3-5-flash-lite/). Actual API model/version and generation configuration are saved in `parsed.json`. The unused local Qwen fallback was not run successfully and is not the model behind the submitted actions.
 
