@@ -44,3 +44,8 @@ tensorboard
 onnx
 pymongo
 psycopg[binary]
+networkx
+transformers
+huggingface-hub
+safetensors
+socksio
