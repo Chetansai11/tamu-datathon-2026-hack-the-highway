@@ -154,7 +154,8 @@ def graph_svg(path):
     edges = path.get("edges", [])
     width = max(720, len(nodes) * 192)
     gap = width / max(len(nodes), 1)
-    pieces = [f'<div class="graph-wrap"><svg role="img" aria-label="Recorded knowledge graph path" viewBox="0 0 {width} 192" width="100%" xmlns="http://www.w3.org/2000/svg">',
+    pieces = [f'<svg role="img" aria-label="Recorded knowledge graph path" viewBox="0 0 {width} 192" width="{width}" height="192" xmlns="http://www.w3.org/2000/svg">',
+              f'<rect x="1" y="1" width="{width-2}" height="190" rx="12" fill="#0e192b" stroke="#2a3c55"/>',
               '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#596f8e"/></marker></defs>']
     for index, edge in enumerate(edges):
         x1, x2 = gap * (index + .5) + 73, gap * (index + 1.5) - 77
@@ -168,7 +169,7 @@ def graph_svg(path):
                        f'<circle cx="{x-56}" cy="72" r="3" fill="{color}"/>',
                        f'<text x="{x}" y="77" text-anchor="middle" fill="{color}" font-size="10" font-family="sans-serif">{escape(kind)}</text>',
                        f'<text x="{x}" y="101" text-anchor="middle" fill="#eef4fc" font-size="13" font-weight="600" font-family="monospace">{escape(identity)}</text>'])
-    pieces.append('</svg></div>')
+    pieces.append('</svg>')
     return "".join(pieces)
 
 
@@ -313,7 +314,9 @@ def render():
                                           format_func=lambda n: f"Path {n+1:02} · {str(paths[n].get('nodes', [''])[0]).split(':')[-1]} → {str(paths[n].get('nodes', [''])[-1]).split(':')[-1]}",
                                           key=f"path_{selected}_{inc_index}")
                 path = paths[path_index]
-                st.html(graph_svg(path))
+                # st.html sanitizes inline SVG in some desktop viewer builds.
+                # st.image preserves the SVG as an image/svg+xml data URI.
+                st.image(graph_svg(path), width="stretch", alt="Recorded knowledge graph path")
                 st.markdown(f'<div class="path-note">{escape(path.get("text", " → ".join(path.get("nodes", []))))}</div>', unsafe_allow_html=True)
                 st.caption(f"Showing {len(path.get('nodes', []))} table-backed entities. {len(paths)} representative paths recorded for this incident.")
             elif incident.get("kind") == "unconfirmed":
