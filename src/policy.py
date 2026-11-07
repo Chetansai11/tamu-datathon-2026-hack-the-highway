@@ -206,7 +206,8 @@ class PolicyEngine:
             return self.trace
         self.real = [i for i in incidents if i.get('confirmed') is True and
                      i['kind'] not in ('noise', 'unconfirmed')]
-        unclear = [i for i in incidents if i['kind'] == 'unconfirmed' or i.get('confirmed') is not True]
+        unclear = [i for i in incidents if i['kind'] != 'noise' and
+                   (i['kind'] == 'unconfirmed' or i.get('confirmed') is not True)]
         if unclear:
             self._call('escalate', {'reason': '; '.join(i.get('reason', 'Unconfirmed operational report') for i in unclear)},
                        'Report lacks confirmation or specificity; no operational action for these incidents (rule 8).')
@@ -255,7 +256,7 @@ class PolicyEngine:
                         vins.intersection(args.get('vins', [])) or args.get('customer_id') in owners):
                     kinds.add(action['tool'])
             detail['action_kinds'] = sorted(kinds)
-            detail['completeness'] = len(kinds) >= 3 if detail in self.real else None
+            detail['completeness'] = None
             if detail.get('confirmed') and detail['kind'] not in ('noise', 'unconfirmed'):
                 detail['completeness'] = len(kinds) >= 3
                 if len(kinds) < 3:

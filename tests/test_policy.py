@@ -160,6 +160,14 @@ class PolicyRulesTest(unittest.TestCase):
         world.run([{"kind": "noise", "confirmed": True, "reason": "Unrelated brochure request"}])
         self.assertEqual(world.client.calls, [])
 
+    def test_rule7_noise_does_not_require_operational_confirmation(self):
+        for incident in ({"kind": "noise", "reason": "Brochure question"},
+                         {"kind": "noise", "confirmed": False, "reason": "Brochure question"}):
+            with self.subTest(incident=incident):
+                world = self.world(production_orders=[po("A", "2027-03-09")])
+                world.run([incident])
+                self.assertEqual(world.client.calls, [])
+
     def test_rule8_rumor_escalates_only(self):
         world = self.world(production_orders=[po("A", "2027-03-09")])
         world.run([{"kind": "unconfirmed", "confirmed": False, "reason": "Unverified disruption"}])
