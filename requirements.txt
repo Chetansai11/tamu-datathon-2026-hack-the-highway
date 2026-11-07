@@ -1,0 +1,46 @@
+# Core data
+# Pinned: a plain `pip install` can swap this for a CPU build. CUDA 12.6 build, tested on the GTX 1650.
+--extra-index-url https://download.pytorch.org/whl/cu126
+torch==2.14.1+cu126
+numpy
+pandas
+pyarrow
+openpyxl
+duckdb
+# Modeling
+scikit-learn
+lightgbm
+xgboost
+catboost
+statsmodels
+optuna
+shap
+imbalanced-learn
+# Charts & apps
+matplotlib
+seaborn
+plotly
+kaleido
+streamlit
+# Notebook
+jupyterlab
+ipykernel
+# Text / docs / agents
+sentence-transformers
+pymupdf
+pytesseract
+pillow
+flask
+requests
+anthropic
+openai
+mcp>=2
+tqdm
+gymnasium
+stable-baselines3
+sb3-contrib
+python-dotenv
+tensorboard
+onnx
+pymongo
+psycopg[binary]
