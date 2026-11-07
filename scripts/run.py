@@ -28,6 +28,23 @@ def dump(path, value):
     Path(path).write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding='utf-8')
 
 
+def validate_cached_record(record, event, graph):
+    """A cache is evidence, not authority: rederive facts from its raw model output."""
+    from src.parse import normalize_incidents, parse_json_output
+    if record.get('text_sha256') != hashlib.sha256(event['text'].encode()).hexdigest():
+        raise ValueError('Parsed text hash mismatch; fresh LLM extraction required.')
+    provenance = record.get('provenance', {})
+    if not provenance.get('raw_output'):
+        raise ValueError('Parsed event lacks LLM output provenance.')
+    if provenance.get('provider') == 'gemini' and provenance.get('finish_reason') != 'STOP':
+        raise ValueError('Cached Gemini extraction did not complete normally.')
+    derived = normalize_incidents(parse_json_output(provenance['raw_output']), event['text'], graph)
+    if derived != record.get('incidents'):
+        raise ValueError('Cached incidents differ from current normalization of raw LLM output; revalidate first.')
+    if provenance.get('warnings') or any(i.get('reason', '').startswith('Extraction validation failed') for i in derived):
+        raise ValueError('Cached extraction has validation warnings.')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--data', type=Path, default=default_data())
@@ -52,11 +69,9 @@ def main():
         parsed = json.loads(args.parsed_file.read_text(encoding='utf-8'))
         if {p['event_id'] for p in parsed} != set(hashes) or len(parsed) != len(events):
             raise SystemExit('Parsed event set does not match feed.')
+        by_event_id = {event['event_id']: event for event in events}
         for record in parsed:
-            if record.get('text_sha256') != hashes[record['event_id']]:
-                raise SystemExit('Parsed text hash mismatch; fresh LLM extraction required.')
-            if not record.get('provenance', {}).get('raw_output'):
-                raise SystemExit('Parsed event lacks LLM output provenance.')
+            validate_cached_record(record, by_event_id[record['event_id']], graph)
     else:
         from src.parse import EventParser
         parser = EventParser(graph, model_path=args.model, provider=args.provider, model_name=args.model_name)
