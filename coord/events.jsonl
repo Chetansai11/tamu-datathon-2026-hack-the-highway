@@ -1,0 +1,1 @@
+{"id": "ca79abe3cf", "ts": "2026-11-07T17:01:38.547+00:00", "type": "add", "agent": "setup", "task": "T154", "title": "Download the starter package, read the brief, record rules and scoring in docs/rules.md", "priority": 1, "files": ["docs/rules.md", "data/"], "needs": [], "detail": ""}
