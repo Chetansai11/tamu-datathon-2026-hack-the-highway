@@ -4,7 +4,7 @@ TAMU Datathon 2026, Challenge 6: Hitachi Hack the Highway. A local control tower
 
 ## Architecture
 
-Event text -> Gemini extraction -> grounded coordinator -> three bounded specialists -> validated official HTTP tools. The Supply Chain Planner finds affected builds and earliest feasible slots or compatible transfers. Dealer Network / Customer Care unions affected orders, notifies each dealer once, and allocates loaners by tier, promised date and order ID. Quality holds lots, stops sale of unsold vehicles and contacts sold-vehicle owners. Every event gets a fresh world; compound incidents share slots and pools.
+Event text -> Gemini extraction -> grounded coordinator -> three bounded specialists -> validated official HTTP tools. The Supply Chain Planner finds affected builds and earliest feasible slots or compatible transfers (same-day ties in canonical plants.csv order). Dealer Network / Customer Care unions affected orders, notifies each dealer once, and allocates loaners by tier, promised date and order ID. Quality holds lots, stops sale of unsold vehicles and contacts sold-vehicle owners. Every event gets a fresh world; compound incidents share slots and pools.
 
 ## LLM versus deterministic code
 
@@ -19,12 +19,12 @@ Read live schedules and loaner pools before writes. Validate exact tool argument
 | Measure | Baseline | Recorded result |
 | --- | --- | --- |
 | Independent public-event audit | Do nothing: 3/15 | 15/15 |
-| Tests | No implemented policy/parser/client/agents | 80/80 |
+| Tests | No implemented policy/parser/client/agents | 82/82 |
 | Graph | No graph | 16 tables, 11 types, 16,979 nodes, 28,190 edges; 814/814 direct-table checks |
-| Official server calls | Zero calls, incomplete corrective work | 1,120 calls, 0 failures |
-| Actions | Zero corrective writes | 766 writes + 352 free reads + 2 escalations |
+| Official server calls | Zero calls, incomplete corrective work | 900 calls, 0 failures |
+| Actions | Zero corrective writes | 766 writes + 132 free reads + 2 escalations |
 
-Final HTTP execution took 9.086 seconds; the dry run took 16.760 seconds. These are observed run durations, not a comparative benchmark. The dry-run and final action logs are byte-for-byte identical.
+Final HTTP execution took 10.109 seconds; the dry run took 11.064 seconds. These are observed run durations, not a comparative benchmark. The dry-run and final action logs are byte-for-byte identical.
 
 ## Model citation and efficiency
 

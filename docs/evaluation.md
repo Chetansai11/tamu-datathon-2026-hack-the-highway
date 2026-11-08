@@ -23,7 +23,7 @@ The actual `gemini-3.5-flash-lite` run produced all 15 event responses using 12,
 
 The final interpreted incidents were compared with every hand-reviewed row below. All plant, shipment, lot and date identities match. The confirmed compound event contains both incidents, the three brochure messages remain noise, and the two rumors remain escalation-only.
 
-The current dry-run official HTTP server completed 900 calls in 10.165 seconds with zero failures, and the independent audit passed 15/15 events. A second clean server run in `runs/submission` completed the same 900 calls in 9.584 seconds with zero failures and again passed 15/15, versus the 3/15 do-nothing baseline. It contains 766 operational writes, 132 free reads and two escalations. Both runs reuse the same recorded LLM output; they are fresh execution checks, not independent LLM reproductions. Both action logs are byte-for-byte identical.
+The current dry-run official HTTP server completed 900 calls in 11.064 seconds with zero failures, and the independent audit passed 15/15 events. A second clean server run in `runs/submission` completed the same 900 calls in 10.109 seconds with zero failures and again passed 15/15, versus the 3/15 do-nothing baseline. It contains 766 operational writes, 132 free reads and two escalations. Both runs reuse the same recorded LLM output; they are fresh execution checks, not independent LLM reproductions. Both action logs are byte-for-byte identical.
 
 **Revision (2026-11-08 00:40 CST).** Two policy refinements, measured against the previous run (`runs/submission-v1`, 1,120 calls):
 
