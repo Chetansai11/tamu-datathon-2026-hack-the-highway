@@ -129,7 +129,7 @@ def build_pdf(summary, audit, graph, test_count, graph_checks):
     small_box(c, 36, 465, 168, "Supply Chain Planner", "Graph impact, earliest slots, transfers", colors.HexColor("#559bc7"))
     small_box(c, 222, 465, 168, "Dealer / Customer Care", "One dealer notice; priority loaners", colors.HexColor("#e4a14b"))
     small_box(c, 408, 465, 168, "Quality", "Lot hold, stop sale, owner contact", colors.HexColor("#9a82c8"))
-    text_block(c, "Fresh world per event. Compound incidents share slots, pools and the affected-order union.",
+    text_block(c, "Each agent has its own tool allowlist, enforced before any HTTP call. Typed handoffs are traced: Coordinator → Planner → Care. Fresh world per event.",
                36, 454, 540, 8, 10.5, MUTED)
 
     heading(c, "LLM understands. Code decides.", 36, 421)
@@ -140,7 +140,7 @@ def build_pdf(summary, audit, graph, test_count, graph_checks):
         "<b>Priority:</b> Platinum, then Gold, earlier promised date, lower order ID. Each dealer receives one event-wide notice.",
     ]
     right = [
-        "Read live schedules and loaner pools before writes. Validate schema, identity, dates and affected scope.",
+        "Per-agent tool allowlists: an out-of-scope call is refused in-process and halts the event. Read live schedules and pools; validate schema, identity, dates and scope.",
         "Never retry an uncertain write. Noise makes no calls; rumors only escalate. Quality separates unsold vehicles from sold owners.",
         "Retain graph paths, decision rationale, tool results and the authoritative action log. No hard-coded event answers.",
     ]
@@ -242,7 +242,7 @@ TAMU Datathon 2026, Challenge 6: Hitachi Hack the Highway. A local control tower
 
 ## Architecture
 
-Event text -> Gemini extraction -> grounded coordinator -> three bounded specialists -> validated official HTTP tools. The Supply Chain Planner finds affected builds and earliest feasible slots or compatible transfers (same-day ties in canonical plants.csv order). Dealer Network / Customer Care unions affected orders, notifies each dealer once, and allocates loaners by tier, promised date and order ID. Quality holds lots, stops sale of unsold vehicles and contacts sold-vehicle owners. Every event gets a fresh world; compound incidents share slots and pools.
+Event text -> Gemini extraction -> grounded coordinator -> three bounded specialists -> validated official HTTP tools. The Supply Chain Planner finds affected builds and earliest feasible slots or compatible transfers (same-day ties in canonical plants.csv order). Dealer Network / Customer Care unions affected orders, notifies each dealer once, and allocates loaners by tier, promised date and order ID. Quality holds lots, stops sale of unsold vehicles and contacts sold-vehicle owners. Every event gets a fresh world; compound incidents share slots and pools. Agents exchange typed, traced handoffs (WorkOrder → ProductionChanges → CustomerCareReport; QualityOrder → QualityReport): Customer Care works from the Planner's handoff and rejects an inconsistent one. The coordinator dispatches only specialists that have work.
 
 ## LLM versus deterministic code
 
@@ -250,7 +250,7 @@ The LLM classifies and splits messages, extracting entity references, confirmati
 
 ## Guardrails
 
-Read live schedules and loaner pools before writes. Validate exact tool arguments, identifiers, dates and affected scope. Never automatically retry a write with uncertain outcome. Noise makes no calls; unconfirmed reports only escalate. Preserve per-event graph paths, reasons, tool responses and the official action log. No event-id answer branches.
+Each agent acts through its own scoped client with a tool allowlist (Coordinator: escalate; Planner: schedule reads, reschedule, transfer, escalate; Customer Care: pool reads, dealer notify, assign loaner; Quality: hold lot, stop sale, notify customer). An out-of-scope call is refused in-process, before HTTP, so it can never become a failed enterprise call; the event halts with the offending agent recorded. Read live schedules and loaner pools before writes. Validate exact tool arguments, identifiers, dates and affected scope. Never automatically retry a write with uncertain outcome. Noise makes no calls; unconfirmed reports only escalate. Preserve per-event graph paths, reasons, tool responses and the official action log. No event-id answer branches.
 
 ## Measured evidence
 

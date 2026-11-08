@@ -187,6 +187,48 @@ def target_summary(args):
     return str(args.get("reason", ""))[:100]
 
 
+def handoff_summary(handoff):
+    payload = handoff.get("payload", {})
+    kind = handoff.get("type")
+    if kind == "WorkOrder":
+        return f"{len(payload.get('affected_production_orders', []))} blocked builds with release dates"
+    if kind == "ProductionChanges":
+        moved = payload.get("moved", {})
+        transfers = sum(1 for m in moved.values() if m.get("tool") == "mes.transfer")
+        return f"{len(moved)} builds moved ({transfers} transferred), {len(payload.get('unresolved', []))} unresolved"
+    if kind == "CustomerCareReport":
+        return (f"{len(payload.get('dealers_notified', []))} dealers notified, {len(payload.get('loaners_assigned', []))} loaners, "
+                f"{len(payload.get('loaner_shortfall', []))} entitled without loaner")
+    if kind == "QualityOrder":
+        return f"Hold lots {', '.join(payload.get('lot_ids', []))}"
+    if kind == "QualityReport":
+        return f"{len(payload.get('lots_held', []))} lot held, {payload.get('vehicles_stopped', 0)} VINs stopped, {payload.get('owners_contacted', 0)} owners contacted"
+    return kind or "Message"
+
+
+def render_agents(trace):
+    arch = trace.get("architecture", {})
+    if not arch.get("specialists") or "handoffs" not in trace:
+        st.info("This run predates recorded agent boundaries and handoffs.")
+        return
+    calls_by_agent = Counter(call.get("role") for call in trace.get("calls", []))
+    rows = [{"Agent": arch.get("coordinator", "Coordinator"), "Allowed tools": ", ".join(arch.get("coordinator_allowed_tools", [])),
+             "Calls this event": calls_by_agent.get(arch.get("coordinator", "Coordinator"), 0)}]
+    rows += [{"Agent": spec["name"], "Allowed tools": ", ".join(spec.get("allowed_tools", [])),
+              "Calls this event": calls_by_agent.get(spec["name"], 0)} for spec in arch["specialists"]]
+    st.caption("TOOL BOUNDARIES · enforced in-process before any HTTP request; an out-of-scope call halts the event and never reaches the server")
+    st.dataframe(rows, hide_index=True, width="stretch")
+    dispatched = (trace.get("agent_steps") or [{}])[0].get("dispatched", [])
+    st.caption("COORDINATOR DISPATCH")
+    st.write(", ".join(dispatched) if dispatched else "No specialist dispatched: no confirmed operational incident.")
+    handoffs = trace.get("handoffs", [])
+    if handoffs:
+        st.caption("TYPED HANDOFFS, IN ORDER")
+        for number, handoff in enumerate(handoffs, 1):
+            with st.expander(f"{number}. {handoff.get('from')} → {handoff.get('to')} · {handoff.get('type')} — {handoff_summary(handoff)}"):
+                st.json(handoff.get("payload", {}), expanded=False)
+
+
 def render():
     st.set_page_config(page_title="Highway · Wacky Wheels Control Tower", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
     st.markdown(CSS, unsafe_allow_html=True)
@@ -288,7 +330,7 @@ def render():
             detail = f"{observed} recorded action{'s' if observed != 1 else ''}" if name != "Coordinator" else f"{len(incident_list)} incident{'s' if len(incident_list) != 1 else ''} routed"
             st.markdown(f'<div class="agent {css}"><div class="label">{escape(label)} · {escape(detail)}</div><div class="name">{escape(short)}</div><div class="detail">{escape(responsibility)}</div></div>', unsafe_allow_html=True)
     st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
-    decision_tab, actions_tab, audit_tab = st.tabs(["Decision & graph", "Actions & playback", "Audit & provenance"])
+    decision_tab, agents_tab, actions_tab, audit_tab = st.tabs(["Decision & graph", "Agents & handoffs", "Actions & playback", "Audit & provenance"])
     with decision_tab:
         if not incident_list:
             st.info("No incident trace has been recorded.")
@@ -327,6 +369,8 @@ def render():
                 st.warning("This incident has no recorded graph path.")
             with st.expander("Inspect affected IDs and normalized incident"):
                 st.json(incident, expanded=False)
+    with agents_tab:
+        render_agents(trace)
     with actions_tab:
         show_reads = st.checkbox("Include free schedule and loaner-pool reads", key=f"reads_{selected}")
         calls = trace.get("calls", [])

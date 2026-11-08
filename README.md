@@ -33,7 +33,7 @@ The runner starts and stops the official server on port 8606 within one process 
 - `outputs/ontology/`: complete graph JSON, GraphML, Mermaid diagram and source provenance.
 - `outputs/submission/hitachi-control-tower-submission.zip`: audited artifacts and an explicit source allowlist, with SHA-256 manifest.
 
-Dates and aliases are resolved in code. Unknown or contradictory facts fail closed. Only affected entities may be changed. Before moves and loaners the client reads live capacity. Dealer notifications and loaner priorities are computed across the whole event. Uncertain write outcomes stop execution and are never retried automatically. The package builder rejects failed/incomplete audits and source changes after the verified run.
+Each agent acts through a scoped client with its own tool allowlist; an out-of-scope call is refused before any HTTP request. Agents pass typed handoffs (recorded in `traces.json` and shown in the UI's "Agents & handoffs" tab). Dates and aliases are resolved in code. Unknown or contradictory facts fail closed. Only affected entities may be changed. Before moves and loaners the client reads live capacity. Dealer notifications and loaner priorities are computed across the whole event. Uncertain write outcomes stop execution and are never retried automatically. The package builder rejects failed/incomplete audits and source changes after the verified run.
 
 The public-data audit is not the hidden judging score. Team eligibility was confirmed by the human; portal upload, repository push and publication remain human actions. Feature freeze: Sunday November 8, 8:00 AM CST; submit by 11:30 AM CST.
 
