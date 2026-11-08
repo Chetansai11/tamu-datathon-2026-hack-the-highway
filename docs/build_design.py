@@ -156,8 +156,8 @@ def build_pdf(summary, audit, graph, test_count, graph_checks):
     text_block(c, "NetworkX graph + actual edge evidence. CSV joins independently check the runtime traversal.", 48, 235, 516, 7.6, 10, MUTED)
 
     heading(c, "Measured execution and model provenance", 36, 199)
-    text_block(c, f"<b>{summary['server_calls']:,} calls:</b> 766 operational writes + 352 free reads + 2 escalations. "
-               f"Final HTTP execution: <b>{summary['seconds_execution']:.3f}s</b>; dry run: 16.760s. These are observed runs, not a comparative benchmark.",
+    text_block(c, f"<b>{summary['server_calls']:,} calls:</b> {summary['operational_writes']:,} operational writes + {summary['server_calls'] - summary['operational_writes'] - 2:,} free reads + 2 escalations. "
+               f"Final HTTP execution: <b>{summary['seconds_execution']:.3f}s</b>; dry run: 10.165s. These are observed runs, not a comparative benchmark.",
                36, 185, 540, 8.5, 11.7)
     text_block(c, f"<b>Gemini 3.5 Flash-Lite</b> ({summary['models'][0]}): {summary['llm_input_tokens']:,} input / "
                f"{summary['llm_output_tokens']:,} output tokens across 15 responses. The clean run reuses recorded raw output after general normalization; it is not an independent model reproduction.",
@@ -242,7 +242,7 @@ TAMU Datathon 2026, Challenge 6: Hitachi Hack the Highway. A local control tower
 
 ## Architecture
 
-Event text -> Gemini extraction -> grounded coordinator -> three bounded specialists -> validated official HTTP tools. The Supply Chain Planner finds affected builds and earliest feasible slots or compatible transfers. Dealer Network / Customer Care unions affected orders, notifies each dealer once, and allocates loaners by tier, promised date and order ID. Quality holds lots, stops sale of unsold vehicles and contacts sold-vehicle owners. Every event gets a fresh world; compound incidents share slots and pools.
+Event text -> Gemini extraction -> grounded coordinator -> three bounded specialists -> validated official HTTP tools. The Supply Chain Planner finds affected builds and earliest feasible slots or compatible transfers (same-day ties in canonical plants.csv order). Dealer Network / Customer Care unions affected orders, notifies each dealer once, and allocates loaners by tier, promised date and order ID. Quality holds lots, stops sale of unsold vehicles and contacts sold-vehicle owners. Every event gets a fresh world; compound incidents share slots and pools.
 
 ## LLM versus deterministic code
 
@@ -260,9 +260,9 @@ Read live schedules and loaner pools before writes. Validate exact tool argument
 | Tests | No implemented policy/parser/client/agents | {test_count}/{test_count} |
 | Graph | No graph | 16 tables, 11 types, {graph['nodes']:,} nodes, {graph['edges']:,} edges; {graph_checks}/{graph_checks} direct-table checks |
 | Official server calls | Zero calls, incomplete corrective work | {summary['server_calls']:,} calls, {summary['failed_calls']} failures |
-| Actions | Zero corrective writes | 766 writes + 352 free reads + 2 escalations |
+| Actions | Zero corrective writes | {summary['operational_writes']:,} writes + {summary['server_calls'] - summary['operational_writes'] - 2:,} free reads + 2 escalations |
 
-Final HTTP execution took {summary['seconds_execution']:.3f} seconds; the dry run took 16.760 seconds. These are observed run durations, not a comparative benchmark. The dry-run and final action logs are byte-for-byte identical.
+Final HTTP execution took {summary['seconds_execution']:.3f} seconds; the dry run took 10.165 seconds. These are observed run durations, not a comparative benchmark. The dry-run and final action logs are byte-for-byte identical.
 
 ## Model citation and efficiency
 

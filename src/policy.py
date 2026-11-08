@@ -103,10 +103,12 @@ class PolicyEngine:
             candidate = self._slot(plant, model, release[po])
             destination = plant
             if candidate is None:
-                alternatives = sorted(row['plant_id'] for row in self.graph.tables['plant_models']
-                                      if row['model'] == model and row['plant_id'] != plant)
+                builds = {(row['plant_id'], row['model']) for row in self.graph.tables['plant_models']}
+                alternatives = [row['plant_id'] for row in self.graph.tables['plants']
+                                if row['plant_id'] != plant and (row['plant_id'], model) in builds]
                 # Transfers may use ANY working day under rule 3. Search date
-                # first, plant ID second, after exhausting the original plant.
+                # first; equal days keep the company's canonical plant order
+                # (plants.csv, the order the official Enterprise loads plants).
                 for day in working_days():
                     for other in alternatives:
                         if self._blocked(other, model, day) or self.full_days.get((other, day)):
@@ -142,10 +144,8 @@ class PolicyEngine:
         for co in self.graph.customer_orders_for(affected):
             by_dealer[self.index['customer_orders'][co]['dealer_id']].append(co)
         for dealer, ids in sorted(by_dealer.items()):
-            # Read the dealer's live resource state; static graph membership
-            # proves the notification contains only this dealer's affected IDs.
-            self._call('crm.loaner_availability', {'dealer_id': dealer},
-                       'Read dealer state before customer-care writes.')
+            # Static graph membership proves the notification contains only
+            # this dealer's affected IDs; notify needs no live resource read.
             self._call('dealer.notify', {'dealer_id': dealer, 'customer_order_ids': sorted(ids),
                        'message': 'Confirmed disruption affects these orders: ' + ', '.join(sorted(ids)) +
                        '. Production changes follow the earliest feasible slot policy.'},
@@ -156,13 +156,21 @@ class PolicyEngine:
                 tier = self.index['customers'][row['customer_id']]['tier']
                 if tier in ('Platinum', 'Gold'):
                     eligible.append((0 if tier == 'Platinum' else 1, row['promised_date'], co))
-            for _, _, co in sorted(eligible):
-                pool = self._call('crm.loaner_availability', {'dealer_id': dealer},
-                                  'Read remaining pool immediately before assignment (rule 5).')
-                if pool['available'] <= 0:
-                    break
+            if not eligible:
+                continue
+            # One live pool read per dealer. Within an event this engine is the
+            # only writer, so the pool shrinks exactly once per assignment.
+            pool = self._call('crm.loaner_availability', {'dealer_id': dealer},
+                              f'Read live pool once before {len(eligible)} entitled assignment(s) (rule 5).')
+            remaining = int(pool['available'])
+            for rank, (_, _, co) in enumerate(sorted(eligible), 1):
+                if remaining <= 0:
+                    self.trace.setdefault('loaner_shortfall', []).append(co)
+                    continue
                 self._call('crm.assign_loaner', {'customer_order_id': co},
-                           'Affected entitled order selected by tier, promised date, then order ID.')
+                           f'Entitled rank {rank} by tier, promised date, then order ID; '
+                           f'{remaining} of {pool["available"]} loaners left before assignment.')
+                remaining -= 1
 
     def _quality(self, incidents):
         affected_vins, lot_ids = set(), set()

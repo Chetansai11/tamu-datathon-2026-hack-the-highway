@@ -7,10 +7,10 @@ The public event text was read independently of the parser, then checked against
 | Measurement | Do-nothing baseline | Current policy, manually normalized inputs |
 | --- | ---: | ---: |
 | Events satisfying independent policy checks | 3 / 15 | 15 / 15 |
-| Server-model calls | 0 | 1,120 |
+| Server-model calls | 0 | 900 (previous run: 1,120) |
 | Failed calls | 0 | 0 |
 | Operational writes | 0 | 766 |
-| Free schedule/pool reads | 0 | 352 |
+| Free schedule/pool reads | 0 | 132 |
 | Escalations | 0 | 2 |
 
 Measured on 2026-11-07 by executing all public events through `PolicyEngine` against a fresh official `Enterprise`, followed by an independent audit of its log and traces. Every event had its own fresh world; the two E-01 incidents shared one world. This preliminary measurement exercises policy, graph evidence and official state transitions. It does **not** establish live-LLM extraction accuracy or final HTTP submission-run success. The final run should retain its own `parsed.json`, `traces.json`, authoritative `action_log.jsonl` and audit report. There is no hidden-answer access, and 15/15 here is not a claimed judging score.
@@ -23,9 +23,16 @@ The actual `gemini-3.5-flash-lite` run produced all 15 event responses using 12,
 
 The final interpreted incidents were compared with every hand-reviewed row below. All plant, shipment, lot and date identities match. The confirmed compound event contains both incidents, the three brochure messages remain noise, and the two rumors remain escalation-only.
 
-The dry-run official HTTP server completed 1,120 calls in 16.760 seconds with zero failures, and the independent audit passed 15/15 events. A second clean server run in `runs/submission` completed the same 1,120 calls in 9.086 seconds with zero failures and again passed 15/15, versus the 3/15 do-nothing baseline. It contains 766 operational writes, 352 reads and two escalations. This second run reuses the same actual LLM output and is a fresh execution check, not an independent LLM reproduction. Both action logs are byte-for-byte identical.
+The current dry-run official HTTP server completed 900 calls in 10.165 seconds with zero failures, and the independent audit passed 15/15 events. A second clean server run in `runs/submission` completed the same 900 calls in 9.584 seconds with zero failures and again passed 15/15, versus the 3/15 do-nothing baseline. It contains 766 operational writes, 132 free reads and two escalations. Both runs reuse the same recorded LLM output; they are fresh execution checks, not independent LLM reproductions. Both action logs are byte-for-byte identical.
 
-The full synthetic/guardrail suite passes 80/80 tests, including four release checks that reject modified, stale or incomplete cached extraction. All 15 existing submission caches also pass the added raw-output revalidation without changing any incident. The UI passed nine AppTest scenarios; native browser verification found and fixed a stripped SVG graph, then confirmed a loaded graph image and actual action/provenance views. Screenshots document the dry-run evidence; the final run has identical actions.
+**Revision (2026-11-08 00:40 CST).** Two policy refinements, measured against the previous run (`runs/submission-v1`, 1,120 calls):
+
+1. *Transfer tie-break.* Rule 3 lets a transfer use any day, so all five public transfers (E-09 `PO-0442`/`PO-0444`, E-11 `PO-0259`/`PO-0260`/`PO-0261`) land on today at one of two compatible plants with free slots. Equal days were previously broken by alphabetical plant id; they now follow the company's canonical plant order in `plants.csv`, which is the order the official `Enterprise` loads plants and `plant_models.csv` lists them. Four transfers change destination (`PO-0442` P_KY→P_TX, `PO-0444` P_IN→P_KY, `PO-0260` P_AL→P_IN, `PO-0261` P_NC→P_TX); `PO-0259` stays at P_KY. The handbook does not state a tie-break, so this is a judgment call, recorded on the coordination board.
+2. *Redundant reads removed.* The Dealer Network specialist read each dealer's loaner pool before every notification and before every assignment (302 pool reads). It now reads a pool once, only for dealers with an entitled Platinum/Gold customer, and caps assignments at that live value (82 pool reads). The engine is the only writer within an event, so one read is exact. Reads fell from 352 to 132 and total calls from 1,120 to 900, with zero failures.
+
+A write-level diff of the two logs shows exactly the four transfer changes; all other 762 writes are identical. The updated auditor (exact earliest transfer, day first then plants.csv order; every assignment backed by a prior live pool read and never exceeding it) passes the new log 15/15 and rejects the previous log on E-09 and E-11.
+
+The full synthetic/guardrail suite passes 82/82 tests (two added: plants.csv tie-break against a non-alphabetical plant order, and one pool read per dealer with capped assignments). The UI passed nine AppTest scenarios; native browser verification found and fixed a stripped SVG graph, then confirmed a loaded graph image and actual action/provenance views. Screenshots were captured on the previous run; apart from the four transfer destinations above, its actions are identical.
 
 Model citation: [Google Gemini 3.5 Flash-Lite model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite) and [model card](https://deepmind.google/models/model-cards/gemini-3-5-flash-lite/). Actual API model/version and generation configuration are saved in `parsed.json`. The unused local Qwen fallback was not run successfully and is not the model behind the submitted actions.
 

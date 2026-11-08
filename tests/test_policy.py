@@ -85,6 +85,21 @@ class PolicyRulesTest(unittest.TestCase):
         self.assertEqual(self.moves(world)[0]["args"]["new_date"], "2027-03-08")
         self.assertNoFailures(world)
 
+    def test_rule3_transfer_same_day_tie_follows_plants_csv_order_not_alphabetical(self):
+        orders = [po("A", "2027-03-09")]
+        for i in range(2, 20):
+            day = enterprise.idx_to_date(i).isoformat()
+            orders += [po(f"F{i}a", day), po(f"F{i}b", day)]
+        plants = [row("plants", "P_A", "Alpha", "Alpha City", 2), row("plants", "P_C", "Gamma", "Gamma City", 2),
+                  row("plants", "P_B", "Beta", "Beta City", 2)]
+        plant_models = [row("plant_models", p, "M1") for p in ("P_A", "P_B", "P_C")]
+        world = self.world(production_orders=orders, plants=plants, plant_models=plant_models)
+        world.run([outage()])
+        move = self.moves(world)[0]
+        self.assertEqual((move["tool"], move["args"]["to_plant_id"], move["args"]["new_date"]),
+                         ("mes.transfer", "P_C", "2027-03-08"))
+        self.assertNoFailures(world)
+
     def test_rule3_transfer_cannot_use_plant_that_does_not_build_model(self):
         orders = [po("A", "2027-03-09")]
         for i in range(20):
@@ -119,6 +134,19 @@ class PolicyRulesTest(unittest.TestCase):
         world.run([outage()])
         assignments = [r["args"]["customer_order_id"] for r in world.client.writes if r["tool"] == "crm.assign_loaner"]
         self.assertEqual(assignments, ["CO-30", "CO-40", "CO-20", "CO-10"])
+        self.assertEqual(world.state()["loaners"]["D1"], 0)
+        self.assertNoFailures(world)
+
+    def test_rule5_one_pool_read_per_dealer_caps_assignments_without_failures(self):
+        ids = ["CO-1", "CO-2", "CO-3"]
+        world = self.world(production_orders=[po("A", "2027-03-09")],
+                           customer_orders=[co(i, "A", f"C{n}") for n, i in enumerate(ids, 1)] + [co("CO-S", "A", "C9", "D2")],
+                           customers=[customer(f"C{n}", "Gold") for n in (1, 2, 3)] + [customer("C9", "Standard")],
+                           loaners=[row("loaners", "D1", 2), row("loaners", "D2", 5)])
+        world.run([outage()])
+        reads = [r["args"]["dealer_id"] for r in world.client.calls if r["tool"] == "crm.loaner_availability"]
+        self.assertEqual(reads, ["D1"])  # D2 has no entitled customer: nothing to read
+        self.assertEqual(world.state()["loaned"], {"CO-1", "CO-2"})
         self.assertEqual(world.state()["loaners"]["D1"], 0)
         self.assertNoFailures(world)
 

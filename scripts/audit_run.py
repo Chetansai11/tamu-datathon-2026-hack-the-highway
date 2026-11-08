@@ -71,6 +71,8 @@ class IndependentAudit:
         self.vehicles = {r["vin"]: r for r in t["finished_vehicles"]}
         self.pools = {r["dealer_id"]: int(r["loaners_available"]) for r in t["loaners"]}
         self.models = defaultdict(set)
+        # Canonical plant order: plants.csv, as the official Enterprise loads it.
+        self.plant_order = [r["plant_id"] for r in t["plants"]]
         self.parts = defaultdict(set)
         for row in t["plant_models"]:
             self.models[row["plant_id"]].add(row["model"])
@@ -228,6 +230,7 @@ class IndependentAudit:
             moves, notified, assigned, held, stopped, contacted = [], defaultdict(list), [], [], [], []
             actions_per_incident = [set() for _ in incidents]
             escalations = 0
+            pool_seen = {}
             state = enterprise.state(eid)
             for number, row in enumerate(rows, 1):
                 tool, args = row.get("tool"), row.get("args", {})
@@ -254,12 +257,13 @@ class IndependentAudit:
                             if tool != "mes.reschedule" or day != same[0].isoformat():
                                 errors.append(f"{pid}: expected earliest same-plant slot {plant}/{same[0]}, got {target}/{day}")
                         else:
-                            alternatives = [(d, other) for d in working_days() for other in sorted(self.models)
+                            alternatives = [(d, other) for d in working_days() for other in self.plant_order
                                             if other != plant and original["model"] in self.models[other] and free(other, d)]
                             if not alternatives:
                                 errors.append(f"{pid}: no feasible slot exists")
-                            elif tool != "mes.transfer" or (day, target) not in {(d.isoformat(), p) for d, p in alternatives} or day != alternatives[0][0].isoformat():
-                                errors.append(f"{pid}: transfer is not an earliest feasible alternative")
+                            elif tool != "mes.transfer" or (day, target) != (alternatives[0][0].isoformat(), alternatives[0][1]):
+                                errors.append(f"{pid}: expected earliest transfer {alternatives[0][1]}/{alternatives[0][0]} "
+                                              f"(day first, then plants.csv order), got {target}/{day}")
                         prior = rows[number - 2] if number > 1 else {}
                         if (prior.get("tool") != "mes.get_schedule"
                                 or prior.get("args") != {"plant_id": target, "date": day}):
@@ -275,10 +279,14 @@ class IndependentAudit:
                 elif tool == "crm.assign_loaner":
                     assigned.append(args.get("customer_order_id"))
                     cid = args.get("customer_order_id")
-                    prior = rows[number - 2] if number > 1 else {}
-                    if (cid in self.co and (prior.get("tool") != "crm.loaner_availability"
-                            or prior.get("args") != {"dealer_id": self.co[cid]["dealer_id"]})):
-                        errors.append(f"{cid}: no immediate pool read before loaner assignment")
+                    if cid in self.co:
+                        dealer = self.co[cid]["dealer_id"]
+                        if dealer not in pool_seen:
+                            errors.append(f"{cid}: no live pool read for {dealer} before loaner assignment")
+                        elif pool_seen[dealer] <= 0:
+                            errors.append(f"{cid}: assignment exceeds the pool read for {dealer}")
+                        else:
+                            pool_seen[dealer] -= 1
                     for index, detail in enumerate(expected["details"]):
                         if args.get("customer_order_id") in detail["co"]:
                             actions_per_incident[index].add(tool)
@@ -297,6 +305,9 @@ class IndependentAudit:
                     for index, detail in enumerate(expected["details"]):
                         if args.get("customer_id") in detail["owners"]:
                             actions_per_incident[index].add(tool)
+                elif tool == "crm.loaner_availability":
+                    # Live pool on the replayed official world at the moment of the read.
+                    pool_seen[args.get("dealer_id")] = state["loaners"].get(args.get("dealer_id"), 0)
                 elif tool == "escalate":
                     escalations += 1
                 elif tool not in READS:
