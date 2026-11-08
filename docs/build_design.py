@@ -157,7 +157,7 @@ def build_pdf(summary, audit, graph, test_count, graph_checks):
 
     heading(c, "Measured execution and model provenance", 36, 199)
     text_block(c, f"<b>{summary['server_calls']:,} calls:</b> {summary['operational_writes']:,} operational writes + {summary['server_calls'] - summary['operational_writes'] - 2:,} free reads + 2 escalations. "
-               f"Final HTTP execution: <b>{summary['seconds_execution']:.3f}s</b>; dry run: 11.064s. These are observed runs, not a comparative benchmark.",
+               f"Final HTTP execution: <b>{summary['seconds_execution']:.3f}s</b>; dry run: 13.035s. These are observed runs, not a comparative benchmark.",
                36, 185, 540, 8.5, 11.7)
     text_block(c, f"<b>Gemini 3.5 Flash-Lite</b> ({summary['models'][0]}): {summary['llm_input_tokens']:,} input / "
                f"{summary['llm_output_tokens']:,} output tokens across 15 responses. The clean run reuses recorded raw output after general normalization; it is not an independent model reproduction.",
@@ -167,7 +167,7 @@ def build_pdf(summary, audit, graph, test_count, graph_checks):
     c.setStrokeColor(colors.HexColor("#d2dfe7"))
     c.line(36, 88, 576, 88)
     text_block(c, "<b>Limits:</b> local audit is not a hidden judging score. Portal upload remains human-only.", 36, 78, 540, 7.8, 10.5, MUTED)
-    text_block(c, "<b>Next:</b> calibrated uncertainty and more paraphrase holdouts. Demo screenshots predate the plants.csv transfer tie-break (4 transfer destinations differ).", 36, 62, 540, 7.8, 10.5, MUTED)
+    text_block(c, "<b>Next:</b> calibrated uncertainty and more paraphrase holdouts. Demo screenshots predate the plants.csv transfer tie-break and the Agents &amp; handoffs tab.", 36, 62, 540, 7.8, 10.5, MUTED)
     c.setFont("WW", 7)
     c.setFillColor(MUTED)
     c.drawString(36, 26, "Wacky Wheels Co. / Local enterprise simulation / Verified November 8, 2026")
@@ -262,7 +262,7 @@ Each agent acts through its own scoped client with a tool allowlist (Coordinator
 | Official server calls | Zero calls, incomplete corrective work | {summary['server_calls']:,} calls, {summary['failed_calls']} failures |
 | Actions | Zero corrective writes | {summary['operational_writes']:,} writes + {summary['server_calls'] - summary['operational_writes'] - 2:,} free reads + 2 escalations |
 
-Final HTTP execution took {summary['seconds_execution']:.3f} seconds; the dry run took 11.064 seconds. These are observed run durations, not a comparative benchmark. The dry-run and final action logs are byte-for-byte identical.
+Final HTTP execution took {summary['seconds_execution']:.3f} seconds; the dry run took 13.035 seconds. These are observed run durations, not a comparative benchmark. The dry-run and final action logs are byte-for-byte identical.
 
 ## Model citation and efficiency
 

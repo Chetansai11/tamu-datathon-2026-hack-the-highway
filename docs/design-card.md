@@ -4,7 +4,7 @@ TAMU Datathon 2026, Challenge 6: Hitachi Hack the Highway. A local control tower
 
 ## Architecture
 
-Event text -> Gemini extraction -> grounded coordinator -> three bounded specialists -> validated official HTTP tools. The Supply Chain Planner finds affected builds and earliest feasible slots or compatible transfers (same-day ties in canonical plants.csv order). Dealer Network / Customer Care unions affected orders, notifies each dealer once, and allocates loaners by tier, promised date and order ID. Quality holds lots, stops sale of unsold vehicles and contacts sold-vehicle owners. Every event gets a fresh world; compound incidents share slots and pools.
+Event text -> Gemini extraction -> grounded coordinator -> three bounded specialists -> validated official HTTP tools. The Supply Chain Planner finds affected builds and earliest feasible slots or compatible transfers (same-day ties in canonical plants.csv order). Dealer Network / Customer Care unions affected orders, notifies each dealer once, and allocates loaners by tier, promised date and order ID. Quality holds lots, stops sale of unsold vehicles and contacts sold-vehicle owners. Every event gets a fresh world; compound incidents share slots and pools. Agents exchange typed, traced handoffs (WorkOrder → ProductionChanges → CustomerCareReport; QualityOrder → QualityReport): Customer Care works from the Planner's handoff and rejects an inconsistent one. The coordinator dispatches only specialists that have work.
 
 ## LLM versus deterministic code
 
@@ -12,19 +12,19 @@ The LLM classifies and splits messages, extracting entity references, confirmati
 
 ## Guardrails
 
-Read live schedules and loaner pools before writes. Validate exact tool arguments, identifiers, dates and affected scope. Never automatically retry a write with uncertain outcome. Noise makes no calls; unconfirmed reports only escalate. Preserve per-event graph paths, reasons, tool responses and the official action log. No event-id answer branches.
+Each agent acts through its own scoped client with a tool allowlist (Coordinator: escalate; Planner: schedule reads, reschedule, transfer, escalate; Customer Care: pool reads, dealer notify, assign loaner; Quality: hold lot, stop sale, notify customer). An out-of-scope call is refused in-process, before HTTP, so it can never become a failed enterprise call; the event halts with the offending agent recorded. Read live schedules and loaner pools before writes. Validate exact tool arguments, identifiers, dates and affected scope. Never automatically retry a write with uncertain outcome. Noise makes no calls; unconfirmed reports only escalate. Preserve per-event graph paths, reasons, tool responses and the official action log. No event-id answer branches.
 
 ## Measured evidence
 
 | Measure | Baseline | Recorded result |
 | --- | --- | --- |
 | Independent public-event audit | Do nothing: 3/15 | 15/15 |
-| Tests | No implemented policy/parser/client/agents | 82/82 |
+| Tests | No implemented policy/parser/client/agents | 88/88 |
 | Graph | No graph | 16 tables, 11 types, 16,979 nodes, 28,190 edges; 814/814 direct-table checks |
 | Official server calls | Zero calls, incomplete corrective work | 900 calls, 0 failures |
 | Actions | Zero corrective writes | 766 writes + 132 free reads + 2 escalations |
 
-Final HTTP execution took 10.109 seconds; the dry run took 11.064 seconds. These are observed run durations, not a comparative benchmark. The dry-run and final action logs are byte-for-byte identical.
+Final HTTP execution took 12.781 seconds; the dry run took 13.035 seconds. These are observed run durations, not a comparative benchmark. The dry-run and final action logs are byte-for-byte identical.
 
 ## Model citation and efficiency
 

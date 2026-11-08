@@ -5,7 +5,7 @@ Verified November 7, 2026. These are local measured results, not a hidden judgin
 | Check | Baseline | Final measured result |
 | --- | --- | --- |
 | Company graph | No graph | 16 tables, 11 types, 16,979 nodes, 28,190 edges; 814/814 direct-table checks |
-| Policy + parser + client + agents + replay integrity | 24 policy tests unavailable before implementation | 82/82 tests pass |
+| Policy + parser + client + agents + replay integrity | 24 policy tests unavailable before implementation | 88/88 tests pass |
 | Actual LLM normalization | 12/15 initially valid | 15/15 after general article/header normalization fixes, same raw model output |
 | Public-event independent audit | Do-nothing 3/15 | 15/15 on dry run and clean submission execution |
 | Official HTTP calls | 0 calls, incomplete work | 900 calls, zero failures (was 1,120 before redundant pool reads were removed) |
